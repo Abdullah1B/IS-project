@@ -1,4 +1,5 @@
 import socket
+import database as db
 
 HOST = ""
 PORT = 5021
@@ -14,21 +15,47 @@ class Sender(object):
         self.Port = port
 
         if(self.login(username, password)):
-            self.menu()    
+            self.menu(username)    
            
 
 
     def login(self,username,password) -> bool:
-        if username == ADMIN and password == PASS:
-            print("Login successfully\n Welcome {}".format(username))
+        if db.Get_User(username,password):
+            if username == ADMIN and password == PASS:
+                print("Login successfully\n Welcome {}".format(username))
             return True
         else:
             print("username or password is wrong")
             return False
 
-    def menu(self):
-        print("here menu")
+    def menu(self,username):
         
+        if username == 'admin':
+            choice = input("1-Create new User\n2-SendFile\n--> ")
+
+            if int(choice) == 1:
+                self.create_user()
+            else:
+                self.send_File()
+            
+        else:
+            self.send_File()
+    
+    def create_user(self):
+        Username = input("Enter Username: ")
+        Password = input("Enter Password: ")
+
+        db.Create_User(Username=Username,Password=Password)
+        print("New user -->\nUsername [{}]\nPassword [{}]".format(Username,Password))
+        
+    
+    def send_File(self):
+        print("here send_File ")
+        pass
+
+
+
+
     def handle_client(self, client, address):
         Mode = client.recv(512) # receive the option mode from client 
         Mode = Mode.decode() # convert from byte to string 
