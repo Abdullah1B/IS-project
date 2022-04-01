@@ -1,5 +1,7 @@
 import socket
 import database as db
+from getpass import getpass
+
 
 HOST = ""
 PORT = 5021
@@ -8,28 +10,25 @@ HEADERSIZE = 1024
 
 ADMIN = "admin"
 PASS = "admin123"
+
+
 class Sender(object):
-    
-    def __init__(self, HostIP,port, username, password) -> None:
+
+    def __init__(self, HostIP, port):
         self.Host = HostIP
         self.Port = port
 
-        if(self.login(username, password)):
-            self.menu(username)    
-           
-
-
-    def login(self,username,password) -> bool:
-        if db.Get_User(username,password):
-            if username == ADMIN and password == PASS:
+    def login(self, username, password) -> bool:
+        if db.Get_User(username, password):
+            if username == ADMIN:
                 print("Login successfully\n Welcome {}".format(username))
             return True
         else:
-            print("username or password is wrong")
+            print("Username or Password is wrong")
             return False
 
-    def menu(self,username):
-        
+    def menu(self, username):
+
         if username == 'admin':
             choice = input("1-Create new User\n2-SendFile\n--> ")
 
@@ -37,39 +36,51 @@ class Sender(object):
                 self.create_user()
             else:
                 self.send_File()
-            
+
         else:
             self.send_File()
-    
-    def create_user(self):
-        Username = input("Enter Username: ")
-        Password = input("Enter Password: ")
 
-        db.Create_User(Username=Username,Password=Password)
-        print("New user -->\nUsername [{}]\nPassword [{}]".format(Username,Password))
-        
-    
+    def create_user(self):
+        while True:
+            Username = input("Enter Username: ")
+            Password = input("Enter Password: ")
+            if self.check_User(Username, Password):
+                if db.Create_User(Username=Username, Password=Password):
+                    print(
+                        "New user -->\nUsername [{}]\nPassword [{}]".format(Username, Password))
+                    break
+                else:
+                    print("Username is already exists")
+
+    def check_User(self, Username: str, Password: str) -> bool:
+        alphbate = "qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM"
+
+        if (len(Password) < 6 or len(Password) > 16):
+            print("The length of password must be between 6 and 16")
+            return False
+        if (" " in Username or Username[0].isdigit() or not Username[0] in alphbate):
+            print(
+                "Useraname must not contin any space\nUsername must start with character..")
+            return False
+        return True
+
     def send_File(self):
         print("here send_File ")
         pass
 
-
-
-
     def handle_client(self, client, address):
-        Mode = client.recv(512) # receive the option mode from client 
-        Mode = Mode.decode() # convert from byte to string 
-        
-        connection = True
-        while connection:
-            
-            
-            if Mode == "Quit_application":
-                msg  = self.receive_data(client= client , address= address)
-                self.send_data(client= client,address= address,msg= f"DISCONNECTED from {address[0]} ".upper())
-                connection = False
-            Mode = client.recv(512) # receive the optin mode from client 
-            Mode = Mode.decode()
-        client.close() # close the connetion between client and server 
+        pass
+
+    def Start(self):
+        while True:
+            Username = input("Username: ")
+            Password = getpass("Password:")
+
+            if self.login(Username, Password):
+                self.menu(Username)
+                break
+
+
 if __name__ == "__main__":
-    s = Sender(HOST,PORT,input("Username: "),input("Password: "))
+    s = Sender(HOST, PORT)
+    s.Start()
