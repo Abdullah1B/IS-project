@@ -135,5 +135,5 @@ def get_all():
 
 # print(add_File("admin","ewewdwedw","abdullah"))
 # print(get_File("admin").split('+')[0:])
-# print(get_File_count("admin"))
+print(get_File_count("admin"))
 

@@ -7,14 +7,16 @@ PORT = 5555
 FORMAT = "utf-8"
 HEADERSIZE = 64
 
-ADMIN = "admin"
-PASS = "admin123"
+
+# PASSWORD = ""
 
 
 class Sender(object):
 
     def login(self, username, password) -> bool:
         self.Sender_Socket.send("LOGIN".encode(FORMAT))
+        
+
         self.send_data("{}+{}".format(username,password))
         
         if self.receive_data() == "OK":
@@ -53,7 +55,7 @@ class Sender(object):
             while True:
                 Username = input("Username: ")
                 Password = getpass("Password:")
-
+                self.UNAME = Username
                 if self.login(Username, Password):
                     self.handle_client()
                     break
@@ -68,12 +70,12 @@ class Sender(object):
             Username = input("Enter Username: ")
             Password = input("Enter Password: ")
             if self.check_User(Username, Password):
-                self.Sender_Socket.send("Register")
+                self.Sender_Socket.send("Register".encode(FORMAT))
                 self.send_data("{}+{}".format(Username,Password))
                 if self.receive_data() == "OK":
                     print(
                         "New user -->\nUsername [{}]\nPassword [{}]".format(Username, Password))
-                    self.main_menu()
+                    self.handle_client()
                     break
                 else:
                     print("Username is already exists")
@@ -99,6 +101,7 @@ class Sender(object):
         while connection:
 
             if input_key == '1':# send in Open Mode
+                self.send_data(input("Enter friend username: "))
                 message = input("Enter the Url of File (location): ")
                 self.send_data(message)
                 self.receive_data()
@@ -106,9 +109,10 @@ class Sender(object):
                 input_key = self.main_menu()
 
             elif input_key == '2': # send in Secure mode
-
-                message = input("Enter the message: ")
-
+                self.send_data(self.UNAME)
+                message = self.receive_data()
+                self.send_data(input("Do want to open the messages? [Yes Or No]\n-> "))
+                print(self.receive_data().split('+')[1:])
                 input_key = self.main_menu()
 
             elif input_key == '3': # Quit form application  

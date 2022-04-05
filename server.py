@@ -37,12 +37,14 @@ class server(object):
 
 
             elif Mode == "Check_Messages":
+                print("Check_Messages")
                 Username = self.receive_data(client,address)
+                print(Username)
                 messages_count = db.get_File_count(Username)
-                self.send_data(messages_count)
+                self.send_data(client,address,messages_count)
                 if self.receive_data(client,address) == "Yes":
                     Files = db.get_File(Username=Username)
-                    self.send_data(clinet,address,Files)
+                    self.send_data(client,address,Files)
 
 
             elif Mode == "Quit_application":
