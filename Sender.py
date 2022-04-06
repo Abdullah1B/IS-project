@@ -1,4 +1,6 @@
 import socket
+import os
+from tqdm import tqdm
 from getpass import getpass
 
 
@@ -28,10 +30,6 @@ class Sender(object):
             return False
 
 
-
-
-    def send_file(self):
-        self.send_data("Hello")
 
 
 
@@ -87,7 +85,7 @@ class Sender(object):
         if (len(Password) < 6 or len(Password) > 16):
             print("The length of password must be between 6 and 16")
             return False
-        if (" " in Username or Username[0].isdigit() or not Username[0] in alphabet):
+        if (" " in Username or not Username[0] in alphabet  ):
             print(
                 "Useraname must not contin any space\nUsername must start with character..")
             return False
@@ -97,18 +95,20 @@ class Sender(object):
     def handle_client(self):
 
         connection = True
-        input_key = self.main_menu() # display of option menu 
+        input_key = self.main_menu() 
         while connection:
 
-            if input_key == '1':# send in Open Mode
-                self.send_data(input("Enter friend username: "))
-                message = input("Enter the Url of File (location): ")
-                self.send_data(message)
+            if input_key == '1':
+                self.send_data("{}+{}".format(input("Enter friend username: "),self.UNAME))
+                URL = input("Enter the Url of File (location): ")
+                self.send_file(URL)
                 self.receive_data()
+
+               
 
                 input_key = self.main_menu()
 
-            elif input_key == '2': # send in Secure mode
+            elif input_key == '2': 
                 self.send_data(self.UNAME)
                 message = self.receive_data()
                 self.send_data(input("Do want to open the messages? [Yes Or No]\n-> "))
@@ -126,6 +126,28 @@ class Sender(object):
                 input_key = self.main_menu()
 
 
+    def send_file(self,URL):# change Url to ????? don't forget
+        filesize = os.path.getsize(URL)
+        self.send_data("{}+{}".format(URL.split('\\')[-1],filesize))
+        # progress = tqdm(range(filesize), f"Sending {URL}", unit="B", unit_scale=True)
+
+
+        while True:
+              # Establish connection with client.
+            data = self.Sender_Socket.recv(12)
+            print('Server received', repr(data))
+
+            f = open(URL, 'rb')
+            l = f.read(1024)
+            while (l):
+               self.Sender_Socket.send(l)
+               print('Sent ', repr(l))
+               l = f.read(1024)
+            f.close()
+            self.Sender_Socket.close()
+
+
+        
     def send_data(self,message):
 
         message2 = str(message)

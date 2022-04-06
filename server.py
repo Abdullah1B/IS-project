@@ -1,6 +1,7 @@
 import socket
 from colorama import init , Fore
 import threading
+from tqdm import tqdm
 import database as db
 init(convert=True)
 
@@ -28,11 +29,11 @@ class server(object):
             if Mode == "Send_File": # receive message and send it back to  client in open mode
                 
 
-                Username = self.receive_data(client,address)
-                url = self.receive_data(client,address).split("+")
-
-                responese = db.add_File(Username=Username,File=url[0],Sender=[1])
+                Username, sender = self.receive_data(client,address).split('+')
+                url = self.receive_file(client,address)
                 self.send_data(client,address,"The File is successfully sent")
+
+                # responese = db.add_File(Username=Username,File=url[0],Sender=Sender)
 
 
 
@@ -65,6 +66,24 @@ class server(object):
             Mode = Mode.decode(FORMAT)
 
         client.close() # close the connetion between client and server 
+
+    def receive_file(self,client,address):
+        file_name , file_size = self.receive_data(client,address).split("+")
+        file_size = int(file_size)
+        with open(file_name, 'wb') as f:
+            while True:
+                print('receiving data...')
+                data = client.recv(12)
+                print('data=%s', (data))
+                if not data:
+                    break
+                # write data to a file
+                f.write(data)
+
+        f.close()
+        print('Successfully get the file')
+        client.close()
+        print('connection closed')
 
 
     def login(self,username,password):
