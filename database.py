@@ -1,25 +1,37 @@
 import sqlite3 as sql
 
-# def create_Table():
-#     con = sql.connect("test.db")
-#     cur = con.cursor()
-#     qurey = ''' CREATE TABLE Files
-#                 ( UName     varchar (255) not null,
-#                   File varchar(128) NOT NULL,
-#                   Sent_by varchar(255) NOt NULL,
-#                   FOREIGN KEY(UName) REFERENCES  USERS (Username)
-#                   );'''
-                  
-#     con.execute(qurey)
-#     con.commit()
+def create_Table():
+    con = sql.connect("test.db")
+    cur = con.cursor()
+    # qurey = ''' CREATE TABLE Public_Keys
+    #             ( UName     varchar (255) not null,
+    #               Public_key varchar(255) NOT NULL,
+    #               FOREIGN KEY(UName) REFERENCES  USERS (Username)
+    #               );'''
+    # q = '''
+    #         DROP TABLE Public_keys
+    #     '''
+    qurey = ''' CREATE TABLE Files
+                ( name     varchar (255) not null,
+                  path     varchar (255) NOT NULL,
+                  Sender   varchar (255) NOT NULL,
+                  session_key varchar (128) NOT NULL,
+                  FOREIGN KEY(name) REFERENCES  USERS (Username)
+                  FOREIGN KEY(Sender) REFERENCES  USERS (Username)
+                  );'''
+    q = '''
+            DROP TABLE Files
+        '''       
+    con.execute(qurey)
+    con.commit()
 
-#     con.close()
+    con.close()
 
 def get_File_count(Username):
     db = sql.connect("test.db")
 
     conut = db.execute(
-        "SELECT COUNT(File) from Files WHERE Uname = (?) ", (Username,))
+        "SELECT COUNT(path) from Files WHERE name = (?) ", (Username,))
     conut = conut.fetchall()
     if len(conut) == 0:
         return 0
@@ -78,13 +90,14 @@ def get_public_key(Username):
 
     db.close()
     KEY = key[0]
-    return KEY [0]
+    return KEY 
     
-def add_File(Username, File,Sender) -> bool:
+def add_File(Username, File,Sender,session_key) -> bool:
     db = sql.connect("test.db")
 
     try:
-        db.execute("INSERT INTO Files(UName,File,Sent_by) VALUES(?,?,?) ", (Username, File,Sender))
+        db.execute("INSERT INTO Files(name,path,Sender,session_key) VALUES(?,?,?,?) ",
+                   (Username, File, Sender, session_key))
         db.commit()
         db.close()
         return True
@@ -95,7 +108,7 @@ def get_File(Username):
     db = sql.connect("test.db")
 
     File = db.execute(
-        "SELECT File from Files WHERE UName = (?) ", (Username,))
+        "SELECT path from Files WHERE name = (?) ", (Username,))
     File = File.fetchall()
     if len(File) == 0:
         return False
@@ -129,11 +142,11 @@ def get_all():
 # create_Table()
 
 # print(add_public_key("admin","aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"))
-# print(get_public_key("admin"))
+# print(get_public_key("g")[0])
 # get_all()
 
 
 # print(add_File("admin","ewewdwedw","abdullah"))
 # print(get_File("admin").split('+')[0:])
-print(get_File_count("admin"))
+# print(get_File_count("admin"))
 

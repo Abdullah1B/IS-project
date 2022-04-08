@@ -1,13 +1,17 @@
+from email import message
 import socket
 from colorama import init , Fore
 import threading
 from tqdm import tqdm
 import database as db
+from cryptography.fernet import Fernet
+from Crypto.Cipher import AES
+from base64 import b64decode
+from Crypto.Util.Padding import unpad
 init(convert=True)
 
 FORMAT = "utf-8"
 HEADERSIZE = 64
-
 ENDC = '\033[0m'
 BOLD = '\033[1m'
 UNDERLINE = '\033[5m'
@@ -30,10 +34,13 @@ class server(object):
                 
 
                 Username, sender = self.receive_data(client,address).split('+')
-                url = self.receive_file(client,address)
-                self.send_data(client,address,"The File is successfully sent")
+                path , session_key = self.receive_file(client,receiver=Username)
 
-                # responese = db.add_File(Username=Username,File=url[0],Sender=Sender)
+                message = db.add_File(Username,path,sender,session_key)
+                if message:
+                    client.send("The file sent successfully".encode(FORMAT))             
+                else:
+                    client.send("Failed".encode(FORMAT))
 
 
 
@@ -48,7 +55,7 @@ class server(object):
                     self.send_data(client,address,Files)
 
 
-            elif Mode == "Quit_application":
+            elif Mode == "Quit":
                 msg  = self.receive_data(client= client , address= address)
                 self.send_data(client= client,address= address,msg= f"DISCONNECTED from {address[0]} ".upper())
                 connection = False
@@ -60,31 +67,35 @@ class server(object):
 
             elif Mode == "Register":
                 User = self.receive_data(client,address).split("+")
-                self.send_data(client,address,self.create_user(User[0],User[1]))
+                self.send_data(client,address,self.create_user(User[0],User[1],User[2]))
 
             Mode = client.recv(512) # receive the optin mode from client 
             Mode = Mode.decode(FORMAT)
 
         client.close() # close the connetion between client and server 
 
-    def receive_file(self,client,address):
-        file_name , file_size = self.receive_data(client,address).split("+")
+    def receive_file(self,client,receiver):
+        pub = db.get_public_key(receiver)
+        
+        client.send(pub[0].encode(FORMAT))
+
+        file_name , file_size= client.recv(4096).decode().split("<SBER>")
+  
+        # key = client.recv(128)
+        # iv = client.recv(128)
+
         file_size = int(file_size)
-        with open(file_name, 'wb') as f:
-            while True:
-                print('receiving data...')
-                data = client.recv(12)
-                print('data=%s', (data))
-                if not data:
-                    break
-                # write data to a file
-                f.write(data)
+        print(file_size)
+        session_key = client.recv(64).decode()
+        data = client.recv(file_size)            
+        
+        print ("Received %d bytes: '%s'" % (len(data), 1))
+        path = 'Server_files\\{}'.format(file_name)
+        with open(path, 'wb') as f:
+            f.write(data)
 
-        f.close()
-        print('Successfully get the file')
-        client.close()
-        print('connection closed')
-
+        return path , session_key
+                
 
     def login(self,username,password):
         if db.Get_User(username,password):
@@ -93,8 +104,9 @@ class server(object):
             return 'Fail'
     
     
-    def create_user(self,username,password):
+    def create_user(self,username,password,key):
         if db.Create_User(username,password):
+            db.add_public_key(username,key)
             return 'OK'
         else:
             return 'Fail'

@@ -1,14 +1,21 @@
+from ast import dump
 import socket
 import os
 from tqdm import tqdm
 from getpass import getpass
+from Crypto.Cipher import AES , PKCS1_OAEP
+from Crypto.PublicKey import RSA
+from base64 import b64encode
+import json
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad , unpad
+from Crypto.Random import get_random_bytes
 
 
 HOST = "127.0.0.1"
 PORT = 5555
 FORMAT = "utf-8"
 HEADERSIZE = 64
-
 
 # PASSWORD = ""
 
@@ -69,7 +76,7 @@ class Sender(object):
             Password = input("Enter Password: ")
             if self.check_User(Username, Password):
                 self.Sender_Socket.send("Register".encode(FORMAT))
-                self.send_data("{}+{}".format(Username,Password))
+                self.send_data("{}+{}+{}".format(Username,Password,self.pair_key(Username)))
                 if self.receive_data() == "OK":
                     print(
                         "New user -->\nUsername [{}]\nPassword [{}]".format(Username, Password))
@@ -91,6 +98,41 @@ class Sender(object):
             return False
         return True
 
+    def encyrpted_key(self,public_key,session_key):
+        with open(public_key,'r') as f:
+            key = RSA.import_key( f.read())
+
+        cipher_rsa = PKCS1_OAEP.new(key)
+        enc_session_key = cipher_rsa.encrypt(session_key)
+
+        return enc_session_key
+
+
+
+    def dencyrpted_key(self,private_key,data): 
+    
+        with open(private_key,'r') as f:
+            key = RSA.import_key( f.read())
+
+        cipher_rsa = PKCS1_OAEP.new(key)
+        enc_session_key = cipher_rsa.decrypt(data)
+
+        return enc_session_key
+
+
+        
+
+
+    def pair_key(self,username):
+        key_pair = RSA.generate(1024)
+        public_key = key_pair.publickey().export_key()
+        with open('private\\{}.key'.format(username),'wb') as f:
+            f.write(key_pair.export_key())
+        path = 'keys\\public-{}.key'.format(username)
+        with open(path,'wb') as f:
+            f.write(public_key)
+
+        return path
 
     def handle_client(self):
 
@@ -99,10 +141,11 @@ class Sender(object):
         while connection:
 
             if input_key == '1':
+
                 self.send_data("{}+{}".format(input("Enter friend username: "),self.UNAME))
                 URL = input("Enter the Url of File (location): ")
                 self.send_file(URL)
-                self.receive_data()
+                print(self.Sender_Socket.recv(128).decode())
 
                
 
@@ -115,59 +158,109 @@ class Sender(object):
                 print(self.receive_data().split('+')[1:])
                 input_key = self.main_menu()
 
-            elif input_key == '3': # Quit form application  
+            elif input_key == '3':  
                 print("")
                 self.send_data("Disconnecting....")
                 self.receive_data()
                 connection = False
 
-            else: # in case the clinet enter wrong option in menu
+            else: 
                 print("ENTER NUMBER BETWEEN 1-3 ...... ")
                 input_key = self.main_menu()
 
 
     def send_file(self,URL):# change Url to ????? don't forget
-        filesize = os.path.getsize(URL)
-        self.send_data("{}+{}".format(URL.split('\\')[-1],filesize))
-        # progress = tqdm(range(filesize), f"Sending {URL}", unit="B", unit_scale=True)
+       
+        with open(URL,'rb') as f:
+            byte_read = f.read()
 
 
-        while True:
-              # Establish connection with client.
-            data = self.Sender_Socket.recv(12)
-            print('Server received', repr(data))
 
-            f = open(URL, 'rb')
-            l = f.read(1024)
-            while (l):
-               self.Sender_Socket.send(l)
-               print('Sent ', repr(l))
-               l = f.read(1024)
-            f.close()
-            self.Sender_Socket.close()
+        public_receiver = self.Sender_Socket.recv(128)
 
+        sec_key = get_random_bytes(16)
 
+        cipher = AES.new(sec_key,AES.MODE_CBC)
+
+        iv = cipher.iv 
+
+        chiper_text = cipher.encrypt(pad(byte_read,AES.block_size))
+
+        filesize = len(chiper_text)
+        newKey = self.encyrpted_key(public_receiver,sec_key)
+        newIV = self.encyrpted_key(public_receiver,iv)
+
+        self.Sender_Socket.send(("{}<SBER>{}".format(URL.split('\\')[-1], filesize)).encode(FORMAT))
+
+        # Encrypt it by using public key of receiver
+        # self.Sender_Socket.send( newKey )
+        # self.Sender_Socket.send( newIV  )
+        self.Sender_Socket.send(self.save_key(newKey,newIV).encode(FORMAT))
         
-    def send_data(self,message):
+
+        self.Sender_Socket.send(chiper_text)
+    
+    def save_key(self,key,iv):
+        
+        iv = b64encode(iv).decode('utf-8')
+        key = b64encode(key).decode('utf-8')
+        
+        keys = json.dumps({'iv':iv,'key':key})
+        path = 'sessionKey\\{}.json'.format(self.UNAME)
+
+        with open(path,'w') as f:
+            json.dump(keys , f , indent= 2)
+        return path
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    def send_data(self,message): # delete it 
 
         message2 = str(message)
-        message2 = f'{len(message2):<{HEADERSIZE}}' + message2 # add the HEADERSIZE to the message
-        self.Sender_Socket.send(message2.encode(FORMAT)) # send to srever 
+        message2 = f'{len(message2):<{HEADERSIZE}}' + message2 
+        self.Sender_Socket.send(message2.encode(FORMAT)) 
     
     
-    def receive_data(self):
+    def receive_data(self):# delete it
       
         full_message = ''
         new_msg = True
         while True:
 
-            msg = self.Sender_Socket.recv(64)  # receive message up to 64 bytes
-            if new_msg: # if it a new message then 
-                msg_length = int(msg[:HEADERSIZE]) # message lenght up to HEADERSIZE
+            msg = self.Sender_Socket.recv(64)  
+            if new_msg: 
+                msg_length = int(msg[:HEADERSIZE]) 
                 new_msg = False
-            full_message += msg.decode(FORMAT)# convet the received part of the message from byte to string
+            full_message += msg.decode(FORMAT)
 
-            if len(full_message) - HEADERSIZE == msg_length: # if the length of Full message - HEADERSIZE == message length then we received the whole message 
+            if len(full_message) - HEADERSIZE == msg_length: 
                 print(
                     f"Received message from server: {full_message[HEADERSIZE:]}\n")
                 new_msg = True
@@ -176,11 +269,11 @@ class Sender(object):
                 return message
 
     def Start(self):
-        self.Sender_Socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # create socket and defind the family and type of socket 
+        self.Sender_Socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
         self.Sender_Socket.connect((HOST,PORT))
         self.menu()
-
-
+    
 if __name__ == "__main__":
+    
     s = Sender()
     s.Start()
