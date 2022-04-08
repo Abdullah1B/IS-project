@@ -109,6 +109,9 @@ class Sender(object):
 
 
 
+
+
+
     def dencyrpted_key(self,private_key,data): 
     
         with open(private_key,'r') as f:
@@ -153,8 +156,15 @@ class Sender(object):
 
             elif input_key == '2': 
                 self.send_data(self.UNAME)
+
                 message = self.receive_data()
-                self.send_data(input("Do want to open the messages? [Yes Or No]\n-> "))
+                response = input("Do want to open the messages? [Yes Or No]\n-> ").upper()
+                
+                self.send_data(response)
+                if response == 'YES':
+                    self.receive_file()
+
+
                 print(self.receive_data().split('+')[1:])
                 input_key = self.main_menu()
 
@@ -212,6 +222,12 @@ class Sender(object):
             json.dump(keys , f , indent= 2)
         return path
 
+    def receive_file(self):
+        self.Sender_Socket.recv()
+        self.Sender_Socket.recv()
+        self.Sender_Socket.recv()
+
+        pass
 
 
 

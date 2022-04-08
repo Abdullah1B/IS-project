@@ -108,7 +108,7 @@ def get_File(Username):
     db = sql.connect("test.db")
 
     File = db.execute(
-        "SELECT path from Files WHERE name = (?) ", (Username,))
+        "SELECT path , Sender from Files WHERE name = (?) ", (Username,))
     File = File.fetchall()
     if len(File) == 0:
         return False
@@ -116,24 +116,46 @@ def get_File(Username):
     db.close()
     FILE = File
     files =""
-    for x in range(len(FILE)):
+    # print(FILE)
+    # print(FILE[0][0])
+    # # print(FILE[0][1])
+    # print(FILE[1][0])
+    # # print(FILE[1][1])
 
-        files +="+"+ FILE[x][0] 
+    for x in range(len(FILE)):
+        for i in range(len(FILE)):
+            files += "<sper>" + FILE[x][i] 
     return files
+
+def session_key(receiver,Sender):
+
+
+    db = sql.connect("test.db")
+
+    sec_key = db.execute(
+        "SELECT session_key from Files WHERE Sender = (?) and name = (?) ", (Sender,receiver))
+    sec_key = sec_key.fetchall()
+    if len(sec_key) == 0:
+        return False
+
+    db.close()
+ 
+    return sec_key[0]
     
 def get_all():
     conn = sql.connect('test.db')
 
     cursor = conn.execute("SELECT * from Files")
     for row in cursor:
-        print("Username = ", row[0])
-        print("Password = ", row[1], '\n')
-        print("Password = ", row[2], '\n')
+        print("receiver = ", row[0])
+        print("file path = ", row[1])
+        print("Send by = ", row[2], '\n')
 
     conn.close()
 
 
-
+  
+  
 
 
 # Create_User("admin","admin123")
@@ -145,8 +167,10 @@ def get_all():
 # print(get_public_key("g")[0])
 # get_all()
 
-
+# print("ddd")
 # print(add_File("admin","ewewdwedw","abdullah"))
-# print(get_File("admin").split('+')[0:])
+# print(get_File("g").split('<sper>'))
 # print(get_File_count("admin"))
+# print(session_key("g","admin")[0])
+
 

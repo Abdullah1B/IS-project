@@ -43,16 +43,22 @@ class server(object):
                     client.send("Failed".encode(FORMAT))
 
 
+  
 
+   
             elif Mode == "Check_Messages":
                 print("Check_Messages")
                 Username = self.receive_data(client,address)
                 print(Username)
+
                 messages_count = db.get_File_count(Username)
+
                 self.send_data(client,address,messages_count)
-                if self.receive_data(client,address) == "Yes":
-                    Files = db.get_File(Username=Username)
-                    self.send_data(client,address,Files)
+               
+                if self.receive_data(client,address) == "YES":
+
+                    Files = db.get_File(Username= Username).split('<sper>')
+                    self.send_file(client,Files,Username)
 
 
             elif Mode == "Quit":
@@ -73,6 +79,38 @@ class server(object):
             Mode = Mode.decode(FORMAT)
 
         client.close() # close the connetion between client and server 
+    
+
+
+    def send_file(self,client,Files,Username):# change Url to ????? don't forget
+
+        with open(Files[-1],'rb') as f:
+            byte_read = f.read()
+
+
+        sec_key = get_random_bytes(16)
+
+        cipher = AES.new(sec_key,AES.MODE_CBC)
+
+        iv = cipher.iv 
+
+        chiper_text = cipher.encrypt(pad(byte_read,AES.block_size))
+
+        filesize = len(chiper_text)
+        newKey = self.encyrpted_key(public_receiver,sec_key)
+        newIV = self.encyrpted_key(public_receiver,iv)
+
+        self.Sender_Socket.send(("{}<SBER>{}".format(URL.split('\\')[-1], filesize)).encode(FORMAT))
+
+        # Encrypt it by using public key of receiver
+        # self.Sender_Socket.send( newKey )
+        # self.Sender_Socket.send( newIV  )
+        self.Sender_Socket.send(self.save_key(newKey,newIV).encode(FORMAT))
+        
+
+        self.Sender_Socket.send(chiper_text)
+
+
 
     def receive_file(self,client,receiver):
         pub = db.get_public_key(receiver)
