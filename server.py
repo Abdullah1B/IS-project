@@ -25,17 +25,23 @@ class server(object):
         connection = True
         while connection:
             if Mode == "Send_File":
+                query = "SELECT Username from USERS WHERE Username = ('{}')".format(client.recv(128).decode())
 
-                Username, sender = client.recv(128).decode().split('<sper>')
-                path, session_key = self.receive_file(
-                    client, receiver=Username)
+                vaildate = db.get(query)
+                if vaildate != "False":
+                    client.send("True".encode(FORMAT))
+                    Username, sender = client.recv(128).decode().split('<sper>')
+                    path, session_key = self.receive_file(client, receiver=Username)
 
-                message = db.add("INSERT INTO Files(name,path,Sender,session_key) VALUES('{}','{}','{}','{}')".format(
-                    Username, path, sender, session_key))
-                if message:
-                    client.send("The file sent successfully".encode(FORMAT))
+                    message = db.add("INSERT INTO Files(name,path,Sender,session_key) VALUES('{}','{}','{}','{}')".format(Username, path, sender, session_key))
+                    if message:
+                        client.send("The file sent successfully".encode(FORMAT))
+                    else:
+                        client.send("Failed".encode(FORMAT))
                 else:
-                    client.send("Failed".encode(FORMAT))
+                    client.send("False".encode(FORMAT))
+
+
 
             elif Mode == "Check_Messages":
                 Username = client.recv(128).decode()
@@ -99,7 +105,12 @@ class server(object):
     def receive_file(self, client, receiver):  # done
         pub = db.get(
             "SELECT Public_key from Public_Keys WHERE Uname = ('{}')".format(receiver))
-        client.send(pub.encode(FORMAT))
+        if pub == "False":
+            client.send(" ".encode(FORMAT))
+            
+        else:
+            client.send(pub.encode(FORMAT))
+    
 
         file_name, file_size = client.recv(4096).decode().split("<SBER>")
 

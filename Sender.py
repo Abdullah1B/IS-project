@@ -25,10 +25,8 @@ class Sender(object):
 
         if self.Sender_Socket.recv(16).decode() == "OK":
 
-            print("Login successfully\n Welcome {}".format(username))
             return True
         else:
-            print("Username or Password is wrong")
             return False
 
     def main_menu(self):
@@ -43,52 +41,58 @@ class Sender(object):
             self.Sender_Socket.send("Quit".encode(FORMAT))
             return '3'
 
-    def menu(self):
-        choice = input("1-Login\n2-Register\n3-Quit\n->")
+    def menu(self,Mode,username,password,email):
+        choice = Mode
 
         if choice == '1':
-            while True:
-                Username = input("Username: ")
-                Password = getpass("Password:")
-                self.UNAME = Username
-                if self.login(Username, Password):
-                    self.handle_client()
-                    break
+            
+            Username = username
+            Password = password
+            self.UNAME = Username
+            if self.login(Username, Password):
+                return "OK"
+            else:
+                return "Username or password is wrong"
 
         elif choice == '2':
-            self.create_user()
+            response = self.create_user(username,password)
+            if response == 'OK':
+                return 'OK'
+            else:
+                return response
+            
         else:
             exit(1)
 
-    def create_user(self):
-        while True:
-            Username = input("Enter Username: ")
-            Password = input("Enter Password: ")
-            if self.check_User(Username, Password):
-                self.Sender_Socket.send("Register".encode(FORMAT))
-                self.Sender_Socket.send(("{}<sper>{}<sper>{}".format(
-                    Username, Password, self.pair_key(Username))).encode(FORMAT))
+    def create_user(self,username,password):
+        
+        Username = username
+        Password = password
+        response ,condation = self.check_User(Username, Password)
+        if condation:
+            self.Sender_Socket.send("Register".encode(FORMAT))
+            self.Sender_Socket.send(("{}<sper>{}<sper>{}".format(
+                Username, Password, self.pair_key(Username))).encode(FORMAT))
+            if self.Sender_Socket.recv(16).decode() == "OK":
+                self.UNAME = Username
 
-                if self.Sender_Socket.recv(16).decode() == "OK":
-                    self.UNAME = Username
-                    print(
-                        "New user -->\nUsername [{}]\nPassword [{}]".format(Username, Password))
-                    self.handle_client()
-                    break
-                else:
-                    print("Username is already exists")
+                return "OK"
+            else:
+                return "Username is already exists"
+        else:
+            return response
 
-    def check_User(self, Username: str, Password: str) -> bool:
+
+    def check_User(self, Username: str, Password: str) :
         alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 
         if (len(Password) < 6 or len(Password) > 16):
-            print("The length of password must be between 6 and 16")
-            return False
+
+            return "Password must be between 6 and 16" ,False 
+
         if (" " in Username or not Username[0] in alphabet):
-            print(
-                "Useraname must not contin any space\nUsername must start with character..")
-            return False
-        return True
+            return "Username must not contin any space or start with digit",False
+        return "",True
 
     def encyrpted_key(self, public_key, session_key):
         with open(public_key, 'r') as f:
@@ -120,52 +124,58 @@ class Sender(object):
 
         return path
 
-    def handle_client(self):
+    def handle_client(self,Mode,Username,filePath):
 
         connection = True
-        input_key = self.main_menu()
-        while connection:
+        input_key = Mode
 
-            if input_key == '1':
-
-                self.Sender_Socket.send(("{}<sper>{}".format(
-                    input("Enter friend username: "), self.UNAME)).encode(FORMAT))
-                URL = input("Enter the Url of File (location): ")
-                self.send_file(URL)
+        if input_key == '1':
+            self.Sender_Socket.send("Send_File".encode(FORMAT))
+            if self.vaildate_user(Username):
+                self.Sender_Socket.send(("{}<sper>{}".format(Username,self.UNAME)).encode(FORMAT))
+                URL = filePath
+                response = self.send_file(URL)
                 print(self.Sender_Socket.recv(128).decode())
+                return response
+            else:
+                return "Fail"
+            # input_key = self.main_menu()
 
-                input_key = self.main_menu()
+        elif input_key == '2':
+            self.Sender_Socket.send(self.UNAME.encode(FORMAT))
 
-            elif input_key == '2':
-                self.Sender_Socket.send(self.UNAME.encode(FORMAT))
+            message = self.Sender_Socket.recv(64).decode()
+            if int(message) > 0:
+                print("You have {} messgae".format(message))
 
-                message = self.Sender_Socket.recv(64).decode()
-                if int(message) > 0:
-                    print("You have {} messgae".format(message))
+                response = input("Do want to open the messages? [Yes Or No]\n-> ").upper()
 
-                    response = input(
-                        "Do want to open the messages? [Yes Or No]\n-> ").upper()
+                self.Sender_Socket.send(response.encode(FORMAT))
+                if response == 'YES':
+                    Files = self.Sender_Socket.recv(512).decode()
 
-                    self.Sender_Socket.send(response.encode(FORMAT))
-                    if response == 'YES':
-                        Files = self.Sender_Socket.recv(512).decode()
+                    file_name, sender = self.message(Files.split("<sper>")[1:])
 
-                        file_name, sender = self.message(Files.split("<sper>")[1:])
-
-                        self.receive_file(file_name, sender)
+                    self.receive_file(file_name, sender)
                 else:
                     self.Sender_Socket.send("NO".encode(FORMAT))
                     print("There is no message")
 
-                input_key = self.main_menu()
+                # input_key = self.main_menu()
 
-            elif input_key == '3':
-                print("")
-                connection = False
+        elif input_key == '3':
+            print("")
+            connection = False
 
-            else:
-                print("ENTER NUMBER BETWEEN 1-3 ...... ")
-                input_key = self.main_menu()
+        else:
+            print("ENTER NUMBER BETWEEN 1-3 ...... ")
+            # input_key = self.main_menu()
+    def vaildate_user(self,username):
+        self.Sender_Socket.send(username.encode(FORMAT))
+        if self.Sender_Socket.recv(64).decode() == "False":
+            return False
+        else:
+            return True
 
     def message(self, files):
 
@@ -189,6 +199,8 @@ class Sender(object):
             byte_read = f.read()
 
         public_receiver = self.Sender_Socket.recv(128).decode()
+        # if public_receiver == " ":
+        #     return "Fail" 
         sec_key = get_random_bytes(16)
         cipher = AES.new(sec_key, AES.MODE_CBC)
         chiper_text = cipher.encrypt(pad(byte_read, AES.block_size))
@@ -202,7 +214,7 @@ class Sender(object):
         self.Sender_Socket.send(self.save_key(newKey, newIV).encode(FORMAT))
 
         self.Sender_Socket.send(chiper_text)
-
+        return "OK"
     def save_key(self, key, iv):
 
         iv = b64encode(iv).decode('utf-8')
@@ -256,7 +268,7 @@ class Sender(object):
     def Start(self):
         self.Sender_Socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.Sender_Socket.connect((HOST, PORT))
-        self.menu()
+        # self.menu()
 
 
 if __name__ == "__main__":

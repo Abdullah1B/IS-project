@@ -10,7 +10,7 @@ def get(qurey):
 
     result = result.fetchall()
     if len(result) == 0:
-        return False
+        return "False"
 
     db.close()
 
@@ -56,6 +56,5 @@ def get_Files(Username):
         for i in range(2):
             files += "<sper>" + FILE[x][i] 
     return files , len(FILE)
-
 
 
