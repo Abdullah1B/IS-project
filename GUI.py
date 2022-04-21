@@ -4,11 +4,12 @@ import PyQt5 as Q5
 from PyQt5.uic import loadUi
 from PyQt5.QtGui import QPixmap
 import PyQt5.QtGui as GU
+from PyQt5.QtCore import Qt
 import PyQt5.QtWidgets as qtw
 from PyQt5.QtCore import QTimer
 from PyQt5.QtWidgets import QDialog, QApplication, QWidget ,QMainWindow,QLabel,QFileDialog,QFileIconProvider
 
-ko = True
+
 
 class gui(QMainWindow):
     def __init__(self): 
@@ -38,7 +39,7 @@ class gui(QMainWindow):
 
 
 
-        login_img = GU.QMovie("Login.gif")
+        login_img = GU.QMovie("assets\Login.gif")
         self.login_image.setMovie(login_img)
         login_img.start()
         
@@ -62,21 +63,26 @@ class gui(QMainWindow):
     def show_sign(self):
         self.Sign_up_form.show()
         self.register_image.show()
-        register_img = GU.QMovie("Sign up (1).gif")
+        register_img = GU.QMovie("assets\Sign up.gif")
         self.register_image.setMovie(register_img)
         register_img.start()
 
     def show_login(self):
         self.Sign_up_form.hide()
         self.register_image.hide()
-        login_img = GU.QMovie("Login.gif")
+        login_img = GU.QMovie("assets\Login.gif")
         self.login_image.setMovie(login_img)
         login_img.start()
 
     
     def LOGIN(self):
+        # main_Page = main_page()
+        # widget.addWidget(main_Page)
+        # widget.setCurrentIndex(widget.currentIndex()+1)
+        
         Username = self.username.text()
         Password = self.password.text()
+        
         if len(Username) == 0 or len(Password) == 0:
             self.error.setText("please write username and password")
         else:
@@ -123,45 +129,130 @@ class main_page(QMainWindow):
     def __init__(self): 
         super(main_page,self).__init__()
         loadUi("GUI\main_page2.ui",self)
+
         self.attachment_frame = self.findChild(qtw.QFrame,"attachment_frame")
         self.sendFile_frame = self.findChild(qtw.QFrame,"frame_2")
+        self.confirm_frame = self.findChild(qtw.QFrame,"frame_3")
+        self.messages_fram = self.findChild(qtw.QFrame,"frame_4")
+        self.table = self.findChild(qtw.QTableWidget,"tableWidget")
+
+        self.confirm_frame.hide()
         self.attachment_frame.hide()
+        self.messages_fram.hide()
+        # Labels
         self.attachment_icon = self.findChild(QLabel,"Icon")
         self.file_name_label = self.findChild(QLabel,"file_name")
         self.file_size_label = self.findChild(QLabel,"size")
+        self.confirm_label   = self.findChild(QLabel,"confirm")
+        self.warning  = self.findChild(QLabel,"label_2")
+        self.warning2 = self.findChild(QLabel,"label_7")
         # Buttons
         self.Send   = self.findChild(qtw.QPushButton,"send_bt")
         self.check  = self.findChild(qtw.QPushButton,"check")
         self.logout = self.findChild(qtw.QPushButton,"LOGOUT")
         self.Browse = self.findChild(qtw.QPushButton,"Browse")
         self.cancel = self.findChild(qtw.QPushButton,"cancel")
+        self.open = self.findChild(qtw.QPushButton,"open")
         self.Send_file = self.findChild(qtw.QPushButton,"send_bt_2")
-
+        self.OK = self.findChild(qtw.QPushButton,"OK")
         self.To = self.findChild(qtw.QLineEdit,"To")
- 
+        
+        # Shadows 
         self.Send.setGraphicsEffect(self.shadow())
         self.check.setGraphicsEffect(self.shadow())
         self.logout.setGraphicsEffect(self.shadow())
         self.sendFile_frame.setGraphicsEffect(self.shadow())
         self.To.setGraphicsEffect(self.shadow())
-        self.Browse.clicked.connect(self.pressed)
+        self.attachment_frame.setGraphicsEffect(self.shadow())
+        self.Send_file.setGraphicsEffect(self.shadow())
+        self.Browse.setGraphicsEffect(self.shadow())
+        self.confirm_frame.setGraphicsEffect(self.shadow())
+        self.OK.setGraphicsEffect(self.shadow())
+
+        self.Browse.clicked.connect(self.Upload)
         self.cancel.clicked.connect(self.Cancel)
+        self.Send.clicked.connect(self.Send_page)
         self.Send_file.clicked.connect(self.SendFile)
+        self.OK.clicked.connect(self.Confirm)
+        self.logout.clicked.connect(self.Logout)
+        self.open.clicked.connect(self.Open)
+        self.check.clicked.connect(self.loadData)
+        self.table.setColumnWidth(0, 170)
+        self.table.setColumnWidth(1, 170)
+        self.table.setColumnWidth(2, 50)
+        self.table.setEditTriggers(qtw.QAbstractItemView.NoEditTriggers)
+    
+    def Logout(self):
+        quit(1)
+    def Send_page(self):
+        self.messages_fram.hide()
+    
+    def Open(self):
+        
+        self.warning2.setText("")
+        index = self.table.selectedIndexes()
+        if len(index) != 0:
+            Item_name = self.table.item(index[0].row(),0)
+            Item_sender = self.table.item(index[0].row(),1)
+
+            filename = QFileDialog.getSaveFileName(self, "Save audio file",Item_name.text())
+            path_to_save = filename[0]
+            if len(path_to_save) > 0:
+                response = s.handle_client("2",Username="",filePath=str(path_to_save),Filename=Item_name.text(),Sender= Item_sender.text())
+                if response == "OK":
+                    self.table.removeRow(index[0].row())
+                    self.attachment_frame.hide()
+                    self.file_name_label.setText("")
+                    self.confirm_frame.setStyleSheet("background-color: rgb(255, 255, 255);border-radius: 35px;")
+                    self.confirm_frame.show()
+                    moive = GU.QMovie("assets\output_LfDsSc.gif")
+                    self.confirm_label.setMovie(moive)
+                    moive.start()
+        else:
+            self.warning2.setText("Please select a file...")
+    def loadData(self):
+        self.messages_fram.show()
+        senders , file_names , dates = s.handle_client('3','','')
+        if senders == "No messages":
+            self.table.setItem(row, 0, qtw.QTableWidgetItem("No messages"))
+
+        else:
+            row=0
+            self.table.setRowCount(len(file_names))
+            for file in file_names:
+                self.table.setItem(row, 0, qtw.QTableWidgetItem(file.split('\\')[-1]))
+                self.table.setItem(row, 1, qtw.QTableWidgetItem(senders[row]))
+                self.table.setItem(row, 2, qtw.QTableWidgetItem(dates[row]))
+                row=row+1
+
+    def Confirm(self):
+        self.confirm_frame.hide()
+    
 
     def SendFile(self):
-        if len(self.To.text()) == 0:
-            pass
+        self.warning.setText("")
+        if len(self.To.text()) == 0 or len(self.file_name_label.text()) == 0:
+            if len(self.To.text()) == 0:
+                self.warning.setText("Please Enter Username")
         else:
             response = s.handle_client("1",self.To.text(),self.fname)
-            print(response)
+            if response == "OK":
+                self.attachment_frame.hide()
+                self.file_name_label.setText("")
+                self.confirm_frame.setStyleSheet("background-color: rgb(255, 255, 255);border-radius: 35px;")
+                self.confirm_frame.show()
+                moive = GU.QMovie("assets\output_LfDsSc.gif")
+                self.confirm_label.setMovie(moive)
+                moive.start()
+            elif response == "not exists":
+                self.warning.setText("Username not exists")
 
     def Cancel(self):
         self.attachment_frame.hide()
-    def pressed(self):
+    def Upload(self):
 
         self.fname, _ = QFileDialog.getOpenFileName(self,"Open", "","All Files (*)")
         
-        self.fname = self.fname.replace("/","\\")
         if len(self.fname) >0:
             size = os.path.getsize(self.fname)
             icon2 = QFileIconProvider().icon(Q5.QtCore.QFileInfo(self.fname))
@@ -170,7 +261,7 @@ class main_page(QMainWindow):
             self.attachment_frame.show()
             self.attachment_icon.setPixmap(icon3)
             self.file_size_label.setText(convert_size(size))
-            self.file_name_label.setText(self.fname.split('\\')[-1])
+            self.file_name_label.setText(self.fname.split('/')[-1])
 
 
     def shadow(self):
@@ -211,4 +302,4 @@ widget.show()
 try:
     sys.exit(app.exec_())
 except:
-    print("OFF oOoOoOoOoOoOoOoOoOoOoOoO")
+    pass

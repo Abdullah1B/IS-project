@@ -3,6 +3,8 @@ from colorama import init, Fore  # must delete
 import threading
 import database as db
 import os
+from datetime import datetime
+
 init(convert=True)
 
 FORMAT = "utf-8"
@@ -32,8 +34,9 @@ class server(object):
                     client.send("True".encode(FORMAT))
                     Username, sender = client.recv(128).decode().split('<sper>')
                     path, session_key = self.receive_file(client, receiver=Username)
-
-                    message = db.add("INSERT INTO Files(name,path,Sender,session_key) VALUES('{}','{}','{}','{}')".format(Username, path, sender, session_key))
+                    now = datetime.now()
+                    dt_string = now.strftime("%Y/%m/%d %H:%M:%S")
+                    message = db.add("INSERT INTO Files(name,path,Sender,session_key,date) VALUES('{}','{}','{}','{}','{}')".format(Username, path, sender, session_key,dt_string))
                     if message:
                         client.send("The file sent successfully".encode(FORMAT))
                     else:
@@ -44,27 +47,33 @@ class server(object):
 
 
             elif Mode == "Check_Messages":
-                Username = client.recv(128).decode()
+                file_name, Sender, username = client.recv(128).decode().split('<sper>')
+
+                self.send_file(client, file_name, Sender, username)
+
+                # Username = client.recv(128).decode()
 
 
-                Files, conut = db.get_Files(Username=Username)
+                # Files, conut = db.get_Files(Username=Username)
 
-                messages_count = str(conut)
+                # messages_count = str(conut)
 
-                client.send(messages_count.encode(FORMAT))
+                # client.send(messages_count.encode(FORMAT))
 
-                if client.recv(16).decode() == "YES":
+                # if client.recv(16).decode() == "YES":
 
+                    # client.send(Files.encode(FORMAT))
+
+
+
+            elif Mode == "get_files":
+                user = client.recv(128).decode()
+                Files, conut, dates  = db.get_Files(Username=user)
+                if conut != 0:
+                    client.send(dates.encode(FORMAT))
                     client.send(Files.encode(FORMAT))
-
-                    file_name, Sender = client.recv(
-                        128).decode().split('<sper>')
-
-                    self.send_file(client, file_name, Sender, Username)
-
-            elif Mode == "Quit":
-                connection = False
-
+                else:
+                    client.send("No messages".encode(FORMAT))
             elif Mode == "LOGIN":
                 User = client.recv(128).decode().split("<sper>")
                 client.send(self.login(User[0], User[1]).encode(FORMAT))
@@ -80,11 +89,9 @@ class server(object):
         client.close()  # close the connetion between client and server
 
     def send_file(self, client, file_name, sender, username):
-        file_path = db.get("SELECT path from Files WHERE name = ('{}') and path = ('{}') and Sender = ('{}')".format(
-            username, file_name, sender))
+        file_path = db.get("SELECT path from Files WHERE name = ('{}') and path = ('{}') and Sender = ('{}')".format(username, "Server_files\\"+file_name, sender))
         sec_key = db.get(
-            "SELECT session_key from Files WHERE Sender = ('{}') and name = ('{}') and path = ('{}')".format(sender, username, file_name))
-
+            "SELECT session_key from Files WHERE Sender = ('{}') and name = ('{}') and path = ('{}')".format(sender, username, "Server_files\\"+file_name))
         with open(file_path, 'rb') as f:
             byte_read = f.read()
 
@@ -97,7 +104,7 @@ class server(object):
         if respones == 'OK':
             # delete file
             query = "DELETE FROM Files WHERE path = ('{}') and name = ('{}') and Sender = ('{}')".format(
-                file_name, username, sender)
+                "Server_files\\"+file_name, username, sender)
             os.remove(file_path)
             os.remove(sec_key)
             db.delete(query)
@@ -164,5 +171,5 @@ class server(object):
             thread.start()
 
 
-Server = server("127.0.0.1", 5555)
+Server = server("127.0.0.1", 5012)
 Server.Start()

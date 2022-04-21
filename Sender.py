@@ -10,7 +10,7 @@ import uuid
 import os
 
 HOST = "127.0.0.1"
-PORT = 5555
+PORT = 5012
 FORMAT = "utf-8"
 HEADERSIZE = 64
 
@@ -124,9 +124,8 @@ class Sender(object):
 
         return path
 
-    def handle_client(self,Mode,Username,filePath):
+    def handle_client(self,Mode,Username,filePath, Filename=None,Sender = None):
 
-        connection = True
         input_key = Mode
 
         if input_key == '1':
@@ -135,41 +134,29 @@ class Sender(object):
                 self.Sender_Socket.send(("{}<sper>{}".format(Username,self.UNAME)).encode(FORMAT))
                 URL = filePath
                 response = self.send_file(URL)
-                print(self.Sender_Socket.recv(128).decode())
+                self.Sender_Socket.recv(128).decode()
                 return response
             else:
-                return "Fail"
-            # input_key = self.main_menu()
+                return "not exists"
 
         elif input_key == '2':
-            self.Sender_Socket.send(self.UNAME.encode(FORMAT))
-
-            message = self.Sender_Socket.recv(64).decode()
-            if int(message) > 0:
-                print("You have {} messgae".format(message))
-
-                response = input("Do want to open the messages? [Yes Or No]\n-> ").upper()
-
-                self.Sender_Socket.send(response.encode(FORMAT))
-                if response == 'YES':
-                    Files = self.Sender_Socket.recv(512).decode()
-
-                    file_name, sender = self.message(Files.split("<sper>")[1:])
-
-                    self.receive_file(file_name, sender)
-                else:
-                    self.Sender_Socket.send("NO".encode(FORMAT))
-                    print("There is no message")
-
-                # input_key = self.main_menu()
+            self.Sender_Socket.send("Check_Messages".encode(FORMAT))
+            file = Filename + "<sper>" + Sender + "<sper>" + self.UNAME
+            self.Sender_Socket.send(file.encode(FORMAT))
+            
+            return self.receive_file(Filename, Sender,filePath)
 
         elif input_key == '3':
-            print("")
-            connection = False
-
-        else:
-            print("ENTER NUMBER BETWEEN 1-3 ...... ")
-            # input_key = self.main_menu()
+            self.Sender_Socket.send("get_files".encode(FORMAT))
+            self.Sender_Socket.send(self.UNAME.encode(FORMAT))
+            dates = self.Sender_Socket.recv(512).decode().split('<sper>')[:-1]
+            files = self.Sender_Socket.recv(512).decode().split("<sper>")[1:]
+            if files == "No messages":
+                return "No messages" ,"No messages" 
+            else:
+                sender_list , file_name_list,dates_list = self.message(files,dates )
+                return sender_list , file_name_list,dates_list
+  
     def vaildate_user(self,username):
         self.Sender_Socket.send(username.encode(FORMAT))
         if self.Sender_Socket.recv(64).decode() == "False":
@@ -177,22 +164,25 @@ class Sender(object):
         else:
             return True
 
-    def message(self, files):
 
+
+
+    def message(self, files,Dates):
         sender = []
         file_names = []
+        dates = []
+        for i in Dates:
+            dates.append(i)
+ 
         # sperate the sender and files  [0] file name and [1] sender for the previous file so if x is even that file name and if it odd sender
         for x in range(len(files)):
             if x % 2 == 1:
                 sender.append(files[x])
             else:
                 file_names.append(files[x])
+            
 
-        for i in range(len(sender)):
-            print(i + 1, '-File:', file_names[i], '\nsent by:', sender[i])
-
-        choice = int(input("choice file:"))
-        return file_names[choice - 1], sender[choice - 1]
+        return sender , file_names ,dates
 
     def send_file(self, URL):  # change Url to ????? don't forget
         with open(URL, 'rb') as f:
@@ -209,7 +199,7 @@ class Sender(object):
         newIV = self.encyrpted_key(public_receiver, cipher.iv)
 
         self.Sender_Socket.send(("{}<SBER>{}".format(
-            URL.split('\\')[-1], filesize)).encode(FORMAT))
+            URL.split('/')[-1], filesize)).encode(FORMAT))
 
         self.Sender_Socket.send(self.save_key(newKey, newIV).encode(FORMAT))
 
@@ -228,10 +218,8 @@ class Sender(object):
             json.dump(keys, f, indent=2)
         return path
 
-    def receive_file(self, file_name, sender):
+    def receive_file(self, file_name, sender,Path_save):
 
-        self.Sender_Socket.send(
-            ("{}<sper>{}".format(file_name, sender)).encode(FORMAT))
 
         file_size, sec_key = self.Sender_Socket.recv(
             4096).decode().split('<sper>')
@@ -256,13 +244,12 @@ class Sender(object):
         except (ValueError, KeyError):
             pass
 
-        File_name = file_name.split('\\')[-1]
-        save_path = input("Enter where do want to save the file:\n-> ")
-        path = os.path.join(save_path,File_name)
-        with open(path, 'wb') as f:
+
+        with open(Path_save, 'wb') as f:
             f.write(data)
 
         self.Sender_Socket.send("OK".encode(FORMAT))
+        return "OK"
 
 
     def Start(self):
