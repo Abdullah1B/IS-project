@@ -1,17 +1,13 @@
 import socket
-from colorama import init, Fore  # must delete
 import threading
 import database as db
 import os
 from datetime import datetime
 
-init(convert=True)
 
 FORMAT = "utf-8"
 HEADERSIZE = 64
-ENDC = '\033[0m'
-BOLD = '\033[1m'
-UNDERLINE = '\033[5m'
+
 
 
 class server(object):
@@ -73,6 +69,7 @@ class server(object):
                     client.send(dates.encode(FORMAT))
                     client.send(Files.encode(FORMAT))
                 else:
+                    client.send("No messages".encode(FORMAT))
                     client.send("No messages".encode(FORMAT))
             elif Mode == "LOGIN":
                 User = client.recv(128).decode().split("<sper>")
@@ -159,11 +156,11 @@ class server(object):
         self.server_Socket.listen()  # start to listen to incoming connections
 
         print(
-            f"{UNDERLINE + BOLD}[LISTENING] Server Start to listening\n{ENDC}")
+            f"[LISTENING] Server Start to listening\n")
         while True:
             client, address = self.server_Socket.accept()  # make connection establish
             print(
-                f"{BOLD + Fore.GREEN}[CONNECTION] connection establish {address[0]}:{address[1]}{ENDC}\n")
+                f"[CONNECTION] connection establish {address[0]}:{address[1]}\n")
 
             # create a thread to handle a multi-connection
             thread = threading.Thread(

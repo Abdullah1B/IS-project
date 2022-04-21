@@ -1,13 +1,10 @@
-import sys, re, os, math
+import sys, re, os
 from Sender import Sender
 import PyQt5 as Q5
 from PyQt5.uic import loadUi
-from PyQt5.QtGui import QPixmap
 import PyQt5.QtGui as GU
-from PyQt5.QtCore import Qt
 import PyQt5.QtWidgets as qtw
-from PyQt5.QtCore import QTimer
-from PyQt5.QtWidgets import QDialog, QApplication, QWidget ,QMainWindow,QLabel,QFileDialog,QFileIconProvider
+from PyQt5.QtWidgets import QApplication, QWidget ,QMainWindow,QLabel,QFileDialog,QFileIconProvider
 
 
 
@@ -108,7 +105,6 @@ class gui(QMainWindow):
                 self.error_Re.setText("")
                 response = s.menu("2",Username,Password,Email)
                 if response != 'OK':
-                    print(response)
                     self.error_Re.setText(response)
                 else:
                     main_Page = main_page()

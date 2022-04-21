@@ -12,7 +12,6 @@ import os
 HOST = "127.0.0.1"
 PORT = 5012
 FORMAT = "utf-8"
-HEADERSIZE = 64
 
 
 class Sender(object):
@@ -29,17 +28,7 @@ class Sender(object):
         else:
             return False
 
-    def main_menu(self):
-        choice = input("1-Send File\n2-Check Messages\n3-Quit\n-> ")
-        if choice == '1':
-            self.Sender_Socket.send("Send_File".encode(FORMAT))
-            return '1'
-        elif choice == '2':
-            self.Sender_Socket.send("Check_Messages".encode(FORMAT))
-            return '2'
-        else:
-            self.Sender_Socket.send("Quit".encode(FORMAT))
-            return '3'
+
 
     def menu(self,Mode,username,password,email):
         choice = Mode
@@ -149,6 +138,7 @@ class Sender(object):
         elif input_key == '3':
             self.Sender_Socket.send("get_files".encode(FORMAT))
             self.Sender_Socket.send(self.UNAME.encode(FORMAT))
+            
             dates = self.Sender_Socket.recv(512).decode().split('<sper>')[:-1]
             files = self.Sender_Socket.recv(512).decode().split("<sper>")[1:]
             if files == "No messages":
