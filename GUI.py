@@ -73,9 +73,7 @@ class gui(QMainWindow):
 
     
     def LOGIN(self):
-        # main_Page = main_page()
-        # widget.addWidget(main_Page)
-        # widget.setCurrentIndex(widget.currentIndex()+1)
+   
         
         Username = self.username.text()
         Password = self.password.text()
@@ -190,11 +188,13 @@ class main_page(QMainWindow):
         if len(index) != 0:
             Item_name = self.table.item(index[0].row(),0)
             Item_sender = self.table.item(index[0].row(),1)
-
-            filename = QFileDialog.getSaveFileName(self, "Save audio file",Item_name.text())
+            file_name = Item_name.text().split('.')[0]
+            extension  = Item_name.text().split('.')[-1]
+            filename = QFileDialog.getSaveFileName(self, "Save file",file_name,'(*).{}'.format(extension))
             path_to_save = filename[0]
+            
             if len(path_to_save) > 0:
-                response = s.handle_client("2",Username="",filePath=str(path_to_save),Filename=Item_name.text(),Sender= Item_sender.text())
+                response = s.handle_client("2",Username="",filePath=str(path_to_save+'.'+extension),Filename=Item_name.text(),Sender= Item_sender.text())
                 if response == "OK":
                     self.table.removeRow(index[0].row())
                     self.attachment_frame.hide()

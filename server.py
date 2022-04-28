@@ -3,6 +3,10 @@ import threading
 import database as db
 import os
 from datetime import datetime
+from base64 import b64encode,b64decode
+from Crypto.Hash import SHA256
+from Crypto.Random import get_random_bytes
+
 
 
 FORMAT = "utf-8"
@@ -46,20 +50,6 @@ class server(object):
                 file_name, Sender, username = client.recv(128).decode().split('<sper>')
 
                 self.send_file(client, file_name, Sender, username)
-
-                # Username = client.recv(128).decode()
-
-
-                # Files, conut = db.get_Files(Username=Username)
-
-                # messages_count = str(conut)
-
-                # client.send(messages_count.encode(FORMAT))
-
-                # if client.recv(16).decode() == "YES":
-
-                    # client.send(Files.encode(FORMAT))
-
 
 
             elif Mode == "get_files":
@@ -129,16 +119,23 @@ class server(object):
         return path, session_key
 
     def login(self, username, password):
-        query = "SELECT Username from USERS WHERE Username = ('{}') and Password = ('{}')".format(
-            username, password)
-        if db.get(query) == username:
+
+        salt = db.get("SELECT salt from USERS WHERE Username = ('{}')".format(username))
+        salt = b64decode(salt)
+        Password = db.get("SELECT Password from USERS WHERE Username = ('{}')".format(username)) 
+        hashedV = b64encode(SHA256.new(password.encode("utf-8") +salt).digest())
+
+        if hashedV == Password.encode(FORMAT):
             return 'OK'
         else:
             return 'Fail'
 
     def create_user(self, username, password, key):
-        User = "INSERT INTO USERS(Username,Password) VALUES('{}','{}')".format(
-            username, password)
+        salt = get_random_bytes(16)
+        hashed = b64encode(SHA256.new(password.encode("utf-8") +salt ).digest())
+        salt = b64encode(salt) 
+        User = "INSERT INTO USERS(Username,Password,salt) VALUES('{}','{}','{}')".format(
+            username, str(hashed)[2:-1],str(salt)[2:-1])
         public_key = "INSERT INTO Public_Keys(Uname,Public_Key) VALUES('{}','{}')".format(
             username, key)
         if db.add(User):

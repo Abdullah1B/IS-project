@@ -38,6 +38,7 @@ class Sender(object):
             Username = username
             Password = password
             self.UNAME = Username
+            self.code = password
             if self.login(Username, Password):
                 return "OK"
             else:
@@ -59,6 +60,7 @@ class Sender(object):
         Password = password
         response ,condation = self.check_User(Username, Password)
         if condation:
+            self.code = password
             self.Sender_Socket.send("Register".encode(FORMAT))
             self.Sender_Socket.send(("{}<sper>{}<sper>{}".format(
                 Username, Password, self.pair_key(Username))).encode(FORMAT))
@@ -94,8 +96,8 @@ class Sender(object):
 
     def dencyrpted_key(self, private_key, data):
 
-        with open(private_key, 'r') as f:
-            key = RSA.import_key(f.read())
+        with open(private_key, 'rb') as f:
+            key = RSA.import_key(f.read(),passphrase=self.code)
 
         cipher_rsa = PKCS1_OAEP.new(key)
         dec_session_key = cipher_rsa.decrypt(data)
@@ -106,7 +108,7 @@ class Sender(object):
         key_pair = RSA.generate(1024)
         public_key = key_pair.publickey().export_key()
         with open('private\{}.pem'.format(username), 'wb') as f:
-            f.write(key_pair.export_key())
+            f.write(key_pair.export_key(passphrase=self.code))
         path = 'keys\public-{}.pem'.format(username)
         with open(path, 'wb') as f:
             f.write(public_key)
@@ -233,7 +235,6 @@ class Sender(object):
 
         except (ValueError, KeyError):
             pass
-
 
         with open(Path_save, 'wb') as f:
             f.write(data)
