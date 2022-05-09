@@ -3,11 +3,9 @@ from Crypto.PublicKey import RSA
 from Crypto.Util.Padding import pad, unpad
 from Crypto.Random import get_random_bytes
 from base64 import b64decode, b64encode
-from getpass import getpass
 import socket
 import json
 import uuid
-import os
 
 HOST = "127.0.0.1"
 PORT = 5012
@@ -77,9 +75,9 @@ class Sender(object):
     def check_User(self, Username: str, Password: str) :
         alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 
-        if (len(Password) < 6 or len(Password) > 16):
+        if (len(Password) < 6):
 
-            return "Password must be between 6 and 16" ,False 
+            return "Password must be at least 6" ,False 
 
         if (" " in Username or not Username[0] in alphabet):
             return "Username must not contin any space or start with digit",False
@@ -141,13 +139,14 @@ class Sender(object):
             self.Sender_Socket.send("get_files".encode(FORMAT))
             self.Sender_Socket.send(self.UNAME.encode(FORMAT))
             
+            count = self.Sender_Socket.recv(512).decode()
             dates = self.Sender_Socket.recv(512).decode().split('<sper>')[:-1]
             files = self.Sender_Socket.recv(512).decode().split("<sper>")[1:]
             if files == "No messages":
                 return "No messages" ,"No messages" 
             else:
                 sender_list , file_name_list,dates_list = self.message(files,dates )
-                return sender_list , file_name_list,dates_list
+                return sender_list , file_name_list,dates_list, count
   
     def vaildate_user(self,username):
         self.Sender_Socket.send(username.encode(FORMAT))
@@ -176,13 +175,12 @@ class Sender(object):
 
         return sender , file_names ,dates
 
-    def send_file(self, URL):  # change Url to ????? don't forget
+    def send_file(self, URL): 
         with open(URL, 'rb') as f:
             byte_read = f.read()
 
         public_receiver = self.Sender_Socket.recv(128).decode()
-        # if public_receiver == " ":
-        #     return "Fail" 
+
         sec_key = get_random_bytes(16)
         cipher = AES.new(sec_key, AES.MODE_CBC)
         chiper_text = cipher.encrypt(pad(byte_read, AES.block_size))
@@ -246,7 +244,6 @@ class Sender(object):
     def Start(self):
         self.Sender_Socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.Sender_Socket.connect((HOST, PORT))
-        # self.menu()
 
 
 if __name__ == "__main__":
